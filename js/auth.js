@@ -75,6 +75,7 @@ const Auth = {
             passwordHash: this.hashPassword(userData.password),
             nome: userData.nome,
             ruolo: userData.ruolo || 'operatore',
+            dipendenteId: userData.dipendenteId || null,
             attivo: true,
             createdAt: new Date().toISOString(),
         };
@@ -124,6 +125,7 @@ const Auth = {
             username: user.username,
             nome: user.nome,
             ruolo: user.ruolo,
+            dipendenteId: user.dipendenteId || null,
         };
         sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
         this.currentUser = sessionData;
@@ -232,6 +234,16 @@ const Auth = {
         if (utentiNav) {
             utentiNav.style.display = this.isAdmin() ? 'flex' : 'none';
         }
+
+        // "I Miei Lavori" visibile se l'utente ha un dipendente collegato
+        const lavoriNav = document.querySelector('[data-page="imiei-lavori"]');
+        const separator = document.querySelector('.sidebar-nav-separator');
+        if (lavoriNav) {
+            const user = this.currentUser ? this.getUserById(this.currentUser.id) : null;
+            const hasDipendente = user && user.dipendenteId;
+            lavoriNav.style.display = hasDipendente ? 'flex' : 'none';
+            if (separator) separator.style.display = hasDipendente ? 'block' : 'none';
+        }
     },
 
     // --- Pagina gestione utenti (solo admin) ---
@@ -261,19 +273,22 @@ const Auth = {
                                 <th>Username</th>
                                 <th>Nome</th>
                                 <th>Ruolo</th>
+                                <th>Dipendente</th>
                                 <th>Stato</th>
-                                <th>Creato il</th>
                                 <th>Azioni</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${users.map(u => `
+                            ${users.map(u => {
+                                const dip = u.dipendenteId ? DB.getById(DB.KEYS.dipendenti, u.dipendenteId) : null;
+                                const dipNome = dip ? `${dip.nome} ${dip.cognome}` : '—';
+                                return `
                                 <tr>
                                     <td><strong>${App.escapeHtml(u.username)}</strong></td>
                                     <td>${App.escapeHtml(u.nome || '—')}</td>
                                     <td><span class="badge badge-${u.ruolo === 'admin' ? 'danger' : u.ruolo === 'manager' ? 'warning' : 'info'}">${u.ruolo}</span></td>
+                                    <td>${App.escapeHtml(dipNome)}</td>
                                     <td><span class="badge badge-${u.attivo ? 'success' : 'neutral'}">${u.attivo ? 'Attivo' : 'Disattivato'}</span></td>
-                                    <td>${App.formatDate(u.createdAt?.split('T')[0])}</td>
                                     <td class="actions-cell">
                                         <button class="btn btn-sm btn-primary" onclick="Auth.openUserForm('${u.id}')">Modifica</button>
                                         ${u.id !== 'admin_default' && u.id !== Auth.currentUser.id ? `
@@ -281,7 +296,7 @@ const Auth = {
                                         ` : ''}
                                     </td>
                                 </tr>
-                            `).join('')}
+                            `}).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -304,6 +319,7 @@ const Auth = {
     openUserForm(id = null) {
         const user = id ? this.getUserById(id) : null;
         const isEdit = !!user;
+        const dipendenti = DB.getDipendenti();
 
         const body = `
             <div class="form-grid">
@@ -338,6 +354,14 @@ const Auth = {
                         <option value="false" ${user?.attivo === false ? 'selected' : ''}>Disattivato</option>
                     </select>
                 </div>
+                <div class="form-group full-width">
+                    <label>Dipendente associato</label>
+                    <select id="fUserDipendente">
+                        <option value="">— Nessun collegamento —</option>
+                        ${dipendenti.map(d => `<option value="${d.id}" ${user?.dipendenteId === d.id ? 'selected' : ''}>${App.escapeHtml(d.nome)} ${App.escapeHtml(d.cognome)} (${d.ruolo || '—'})</option>`).join('')}
+                    </select>
+                    <small style="color:var(--text-secondary);margin-top:2px;">Collega questo account a un dipendente per abilitare "I Miei Lavori"</small>
+                </div>
             </div>
         `;
 
@@ -356,6 +380,7 @@ const Auth = {
         const passwordConfirm = document.getElementById('fUserPasswordConfirm').value;
         const ruolo = document.getElementById('fUserRuolo').value;
         const attivo = document.getElementById('fUserAttivo').value === 'true';
+        const dipendenteId = document.getElementById('fUserDipendente').value || null;
 
         if (!username) {
             App.toast('Inserire un username', 'error');
@@ -368,7 +393,7 @@ const Auth = {
         }
 
         if (id) {
-            const updates = { username, nome, ruolo, attivo };
+            const updates = { username, nome, ruolo, attivo, dipendenteId };
             if (password) updates.password = password;
             const result = this.updateUser(id, updates);
             if (result && result.error) {
@@ -385,7 +410,7 @@ const Auth = {
                 App.toast('La password deve avere almeno 3 caratteri', 'error');
                 return;
             }
-            const result = this.addUser({ username, password, nome, ruolo });
+            const result = this.addUser({ username, password, nome, ruolo, dipendenteId });
             if (result && result.error) {
                 App.toast(result.error, 'error');
                 return;

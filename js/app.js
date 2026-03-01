@@ -58,6 +58,7 @@ const App = {
             fatturazione: 'Fatturazione',
             magazzino: 'Magazzino',
             report: 'Report',
+            'imiei-lavori': 'I Miei Lavori',
             utenti: 'Gestione Utenti',
         };
 
@@ -80,6 +81,7 @@ const App = {
             fatturazione: () => Fatturazione.render(),
             magazzino: () => Magazzino.render(),
             report: () => Report.render(),
+            'imiei-lavori': () => AreaDipendente.render(),
             utenti: () => Auth.renderUtenti(),
         };
 
