@@ -6,13 +6,14 @@ const App = {
     currentPage: 'dashboard',
 
     // --- Inizializzazione ---
-    init() {
+    init(startPage = 'dashboard') {
         DB.seedDemoData();
+        Auth.seedDemoEmployeeAccounts();
         this.setupNavigation();
         this.setupModal();
         this.setupSidebar();
         this.updateDate();
-        this.navigate('dashboard');
+        this.navigate(startPage);
     },
 
     // --- Controllo accesso pagina ---
@@ -20,9 +21,17 @@ const App = {
         // Pagina utenti solo per admin
         if (page === 'utenti' && !Auth.isAdmin()) {
             this.toast('Accesso non autorizzato', 'error');
-            this.navigate('dashboard');
+            this.navigate('imiei-lavori');
             return false;
         }
+
+        // Dipendenti possono accedere SOLO a "I Miei Lavori"
+        if (Auth.isDipendente() && page !== 'imiei-lavori') {
+            this.toast('Accesso non autorizzato', 'error');
+            this.navigate('imiei-lavori');
+            return false;
+        }
+
         return true;
     },
 

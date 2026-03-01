@@ -38,6 +38,35 @@ const Auth = {
         }
     },
 
+    // --- Crea account demo per i dipendenti (eseguito dopo seedDemoData) ---
+    seedDemoEmployeeAccounts() {
+        const users = this.getUsers();
+        // Se ci sono gia' account dipendente, non creare duplicati
+        if (users.some(u => u.dipendenteId)) return;
+
+        const dipendenti = DB.getDipendenti();
+        if (dipendenti.length === 0) return;
+
+        const demoAccounts = [
+            { nome: 'Marco Verdi', username: 'marco.verdi', password: 'marco' },
+            { nome: 'Laura Neri', username: 'laura.neri', password: 'laura' },
+            { nome: 'Giuseppe Russo', username: 'giuseppe.russo', password: 'giuseppe' },
+            { nome: 'Anna Colombo', username: 'anna.colombo', password: 'anna' },
+        ];
+
+        demoAccounts.forEach((acc, idx) => {
+            if (dipendenti[idx]) {
+                this.addUser({
+                    username: acc.username,
+                    password: acc.password,
+                    nome: acc.nome,
+                    ruolo: 'operatore',
+                    dipendenteId: dipendenti[idx].id,
+                });
+            }
+        });
+    },
+
     // --- Hash password (SHA-256 semplificato con salt statico per demo) ---
     hashPassword(password) {
         let hash = 0;
@@ -156,6 +185,10 @@ const Auth = {
         return this.currentUser && this.currentUser.ruolo === 'admin';
     },
 
+    isDipendente() {
+        return this.currentUser && !!this.currentUser.dipendenteId;
+    },
+
     isLoggedIn() {
         return !!this.currentUser;
     },
@@ -211,11 +244,11 @@ const Auth = {
         // Aggiorna info utente in topbar e sidebar
         this.updateUserUI();
 
-        // Configura visibilita' link admin
+        // Configura visibilita' nav in base al ruolo
         this.updateNavVisibility();
 
-        // Avvia l'app
-        App.init();
+        // Avvia l'app — dipendenti vanno direttamente a "I Miei Lavori"
+        App.init(this.isDipendente() ? 'imiei-lavori' : 'dashboard');
     },
 
     updateUserUI() {
@@ -230,6 +263,16 @@ const Auth = {
     },
 
     updateNavVisibility() {
+        const isDip = this.isDipendente();
+
+        // Pagine gestionali: nascoste per i dipendenti
+        const managementPages = ['dashboard', 'clienti', 'dipendenti', 'pianificazione', 'preventivi', 'fatturazione', 'magazzino', 'report'];
+        managementPages.forEach(page => {
+            const nav = document.querySelector(`[data-page="${page}"]`);
+            if (nav) nav.style.display = isDip ? 'none' : 'flex';
+        });
+
+        // Utenti: solo admin
         const utentiNav = document.querySelector('[data-page="utenti"]');
         if (utentiNav) {
             utentiNav.style.display = this.isAdmin() ? 'flex' : 'none';
@@ -239,10 +282,8 @@ const Auth = {
         const lavoriNav = document.querySelector('[data-page="imiei-lavori"]');
         const separator = document.querySelector('.sidebar-nav-separator');
         if (lavoriNav) {
-            const user = this.currentUser ? this.getUserById(this.currentUser.id) : null;
-            const hasDipendente = user && user.dipendenteId;
-            lavoriNav.style.display = hasDipendente ? 'flex' : 'none';
-            if (separator) separator.style.display = hasDipendente ? 'block' : 'none';
+            lavoriNav.style.display = isDip ? 'flex' : 'none';
+            if (separator) separator.style.display = isDip ? 'block' : 'none';
         }
     },
 
