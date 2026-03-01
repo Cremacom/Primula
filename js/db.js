@@ -175,6 +175,9 @@ const DB = {
         for (const [name, key] of Object.entries(this.KEYS)) {
             data[name] = this.getAll(key);
         }
+        // Includi utenti se presenti
+        const utenti = localStorage.getItem('primula_utenti');
+        if (utenti) data.utenti = JSON.parse(utenti);
         return JSON.stringify(data, null, 2);
     },
 
@@ -184,6 +187,10 @@ const DB = {
             if (data[name]) {
                 this.saveAll(key, data[name]);
             }
+        }
+        // Importa utenti se presenti
+        if (data.utenti) {
+            localStorage.setItem('primula_utenti', JSON.stringify(data.utenti));
         }
     },
 

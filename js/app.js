@@ -15,6 +15,17 @@ const App = {
         this.navigate('dashboard');
     },
 
+    // --- Controllo accesso pagina ---
+    checkPageAccess(page) {
+        // Pagina utenti solo per admin
+        if (page === 'utenti' && !Auth.isAdmin()) {
+            this.toast('Accesso non autorizzato', 'error');
+            this.navigate('dashboard');
+            return false;
+        }
+        return true;
+    },
+
     // --- Navigazione ---
     setupNavigation() {
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -27,6 +38,9 @@ const App = {
     },
 
     navigate(page) {
+        // Controllo accesso
+        if (!this.checkPageAccess(page)) return;
+
         this.currentPage = page;
 
         // Aggiorna nav attiva
@@ -44,6 +58,7 @@ const App = {
             fatturazione: 'Fatturazione',
             magazzino: 'Magazzino',
             report: 'Report',
+            utenti: 'Gestione Utenti',
         };
 
         document.getElementById('pageTitle').textContent = titles[page] || page;
@@ -65,6 +80,7 @@ const App = {
             fatturazione: () => Fatturazione.render(),
             magazzino: () => Magazzino.render(),
             report: () => Report.render(),
+            utenti: () => Auth.renderUtenti(),
         };
 
         if (renderers[page]) {
@@ -176,5 +192,5 @@ const App = {
     }
 };
 
-// Avvio applicazione
-document.addEventListener('DOMContentLoaded', () => App.init());
+// Avvio applicazione — passa per Auth che decide se mostrare login o app
+document.addEventListener('DOMContentLoaded', () => Auth.init());
